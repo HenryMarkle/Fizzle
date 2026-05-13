@@ -916,9 +916,10 @@ Options
             return $"{lowered}";
 
         if (IsGlobal(name, ctx, out var casedName))
-            return $"Glob.{casedName}";
+            // return $"Glob.{casedName}";
+            return $"{casedName}";
 
-        return $"Glob.{name}";
+        return $"{name}";
     }
 
     private static bool IsGlobal(string name, HandlerContext ctx, [NotNullWhen(true)] out string? caseName)
@@ -1036,7 +1037,7 @@ Options
         var child = WriteExpression(node.Expression, ctx);
         var args = node.Parameters.Select(v => WriteExpression(v, ctx));
         var name = WriteSanitizeIdentifier(node.Name.ToLower());
-        return $"{child}.{name}({string.Join(',', args)})";
+        return $"{child}.{name}({string.Join(", ", args)})";
     }
 
     private static string WriteList(AstNode.List node, HandlerContext ctx)
@@ -1045,7 +1046,7 @@ Options
             return "{}";
 
         var args = node.Values.Select(v => WriteExpression(v, ctx));
-        return $"{{ {string.Join(',', args)} }}";
+        return $"{{ {string.Join(", ", args)} }}";
     }
 
     private static string MovieScriptPrefix(HandlerContext ctx)
@@ -1063,7 +1064,8 @@ Options
         if (node.Name.Equals("void", StringComparison.InvariantCultureIgnoreCase))
             return "nil";
 
-        return $"Glob.{node.Name.ToUpper()}";
+        // return $"Glob.{node.Name.ToUpper()}";
+        return $"{node.Name.ToUpper()}";
     }
 
     private static string WriteBinaryOperator(
@@ -1250,16 +1252,21 @@ Options
         // TODO: Generalize
         if (name is "image" or "color" or "rect" or "point" or "random")
         {
-            return $"{name}({string.Join(',', args)})";
+            return $"{name}({string.Join(", ", args)})";
+        }
+
+        if (name is "string")
+        {
+            return $"tostring({string.Join(", ", args)})";
         }
 
         var sb = new StringBuilder();
 
         // sb.Append(isStatic ? "LingoGlobal." : "_global.");
-        sb.Append("Glob.");
+        // sb.Append("Glob.");
         sb.Append(WriteSanitizeIdentifier(name.ToLower()));
         sb.Append('(');
-        sb.Append(string.Join(',', args));
+        sb.Append(string.Join(", ", args));
         sb.Append(')');
 
         return sb.ToString();
