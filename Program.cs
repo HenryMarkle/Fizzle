@@ -135,8 +135,13 @@ public class Config
                 throw new ArgumentException("Invalid -e option value");
         }
 
+        #if DEBUG
+        input ??= @"/home/henry/Projects/Fizzle/example";
+        #else
         if (input is null)
             throw new ArgumentException("No -f option specified");
+        #endif
+
 
         if (Directory.Exists(input))
         {
@@ -287,7 +292,7 @@ Options
         GlobalContext ctx)
     {
         WriteFileHeader(writer);
-        writer.WriteLine($"--Behavior script: {name}\n");
+        writer.WriteLine($"-- Behavior script: {name}\n");
 
         EmitScriptBody(name, script, writer, ctx, isMovieScript: false);
 
@@ -412,7 +417,7 @@ Options
             }
             catch (Exception e)
             {
-                Console.WriteLine($"Failed to write handler {handler.Name}:\n{e}");
+                Console.WriteLine($"Failed to write handler '{handler.Name}' in script '{name}':\n{e}");
                 // writer.WriteLine($"{Indent(2)}throw new System.NotImplementedException(\"Compilation failed\");\n}}");
                 continue;
             }
@@ -1022,6 +1027,19 @@ Options
             return WriteGlobalCall("lengthmember_helper", ctx, node.Expression);
 
         var child = WriteExpression(node.Expression, ctx);
+
+        // if (
+        //     node.Expression is AstNode.Number 
+        //     or AstNode.UnaryOperator { Type: AstNode.UnaryOperatorType.Negate, Expression: AstNode.Number }
+        //     &&
+        //     node.Property is "integer")
+        //     return $"int({child})";
+        if (node.Property is "integer" or "float")
+            return $"{node.Property}({child})";
+
+        if (node.Property is "count")
+            return $"#{child}";
+
         return $"{child}.{WriteSanitizeIdentifier(node.Property.ToLower())}";
     }
 
@@ -1029,12 +1047,16 @@ Options
     {
         var child = WriteExpression(node.Expression, ctx);
         var idx = WriteExpression(node.Index, ctx);
+
+        if (node.Expression is AstNode.PropertyList or AstNode.List) child = $"({child})";
         return $"{child}[{idx}]";
     }
 
     private static string WriteMemberCall(AstNode.MemberCall node, HandlerContext ctx)
     {
         var child = WriteExpression(node.Expression, ctx);
+        if (node.Expression is AstNode.PropertyList or AstNode.List) child = $"({child})";
+
         var args = node.Parameters.Select(v => WriteExpression(v, ctx));
         var name = WriteSanitizeIdentifier(node.Name.ToLower());
         return $"{child}.{name}({string.Join(", ", args)})";
@@ -1111,57 +1133,40 @@ Options
             _ => throw new ArgumentOutOfRangeException()
         };
 
-        string exprTemplate = $"{WriteExpression(node.Left, ctx, param)} {{0}} {WriteExpression(node.Right, ctx, param)}";
-
-        switch (node.Type)
+        string? simplifiedOp = node.Type switch
         {
-            case AstNode.BinaryOperatorType.LessThan:
-                return string.Format(exprTemplate, "<");
+            AstNode.BinaryOperatorType.LessThan => "<",
+            AstNode.BinaryOperatorType.LessThanOrEqual => "<=",
+            AstNode.BinaryOperatorType.NotEqual => "~=",
+            AstNode.BinaryOperatorType.Equal => "==",
+            AstNode.BinaryOperatorType.GreaterThan => ">",
+            AstNode.BinaryOperatorType.GreaterThanOrEqual => ">=",
+            AstNode.BinaryOperatorType.And => "and",
+            AstNode.BinaryOperatorType.Or => "or",
+            AstNode.BinaryOperatorType.Sand => "and",
+            AstNode.BinaryOperatorType.Sor => "or",
+            AstNode.BinaryOperatorType.Add => "+",
+            AstNode.BinaryOperatorType.Subtract => "-",
+            AstNode.BinaryOperatorType.Multiply => "*",
+            AstNode.BinaryOperatorType.Divide => "/",
+            AstNode.BinaryOperatorType.Mod => "%",
+            _ => null,
+        };
 
-            case AstNode.BinaryOperatorType.LessThanOrEqual:
-                return string.Format(exprTemplate, "<=");
+        if (simplifiedOp is not null)
+        {
+            var leftExprStr = WriteExpression(node.Left, ctx, param);
+            var rightExprStr = WriteExpression(node.Right, ctx, param);
 
-            case AstNode.BinaryOperatorType.NotEqual:
-                return string.Format(exprTemplate, "~=");
+            if (!isSimpleExpr(node.Left)) leftExprStr = $"({leftExprStr})";
+            if (!isSimpleExpr(node.Right)) rightExprStr = $"({rightExprStr})";
 
-            case AstNode.BinaryOperatorType.Equal:
-                return string.Format(exprTemplate, "==");
-
-            case AstNode.BinaryOperatorType.GreaterThan:
-                return string.Format(exprTemplate, ">");
-
-            case AstNode.BinaryOperatorType.GreaterThanOrEqual:
-                return string.Format(exprTemplate, ">=");
-
-            case AstNode.BinaryOperatorType.And:
-                return string.Format(exprTemplate, "and");
-
-            case AstNode.BinaryOperatorType.Or:
-                return string.Format(exprTemplate, "or");
-
-            case AstNode.BinaryOperatorType.Sand:
-                return string.Format(exprTemplate, "and");
-
-            case AstNode.BinaryOperatorType.Sor:
-                return string.Format(exprTemplate, "or");
-
-            case AstNode.BinaryOperatorType.Add:
-                return string.Format(exprTemplate, "+");
-
-            case AstNode.BinaryOperatorType.Subtract:
-                return string.Format(exprTemplate, "-");
-
-            case AstNode.BinaryOperatorType.Multiply:
-                return string.Format(exprTemplate, "*");
-
-            case AstNode.BinaryOperatorType.Divide:
-                return string.Format(exprTemplate, "/");
-
-            case AstNode.BinaryOperatorType.Mod:
-                return string.Format(exprTemplate, "mod");
+            return $"{leftExprStr} {simplifiedOp} {rightExprStr}";
         }
 
         return WriteGlobalCall(helperOps, ctx, node.Left, node.Right);
+        
+        bool isSimpleExpr(AstNode.Base node) => node is AstNode.String or AstNode.Symbol or AstNode.Number or AstNode.Constant;
     }
 
     private static string WriteComparisonBoolOp(
