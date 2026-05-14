@@ -594,7 +594,7 @@ Options
             }
             else
             {
-                ctx.Writer.WriteLine($"{Indent(indent)}else\n");
+                ctx.Writer.WriteLine($"{Indent(indent)}else");
                 WriteStatementBlock(node.Else, ctx, indent + 1);
                 ctx.Writer.WriteLine($"{Indent(indent)}end");
             }
@@ -627,7 +627,7 @@ Options
         MakeLoopTmp(ctx, name, loopTmp, number: true, indent + 1);
         WriteStatementBlock(node.Block, ctx, indent + 1);
 
-        ctx.Writer.WriteLine($"{Indent(indent + 1)}{loopTmp} = {WriteVariableNameCore(name, ctx)};");
+        // ctx.Writer.WriteLine($"{Indent(indent + 1)}{loopTmp} = {WriteVariableNameCore(name, ctx)};");
         ctx.Writer.WriteLine($"{Indent(indent)}end");
 
         // ctx.LoopTempIdx--;
@@ -645,7 +645,7 @@ Options
         MakeLoopTmp(ctx, name, loopTmp, number: true, indent + 1);
         WriteStatementBlock(node.Block, ctx, indent + 1);
 
-        ctx.Writer.WriteLine($"{Indent(indent + 1)}{loopTmp} = {WriteVariableNameCore(name, ctx)};");
+        // ctx.Writer.WriteLine($"{Indent(indent + 1)}{loopTmp} = {WriteVariableNameCore(name, ctx)};");
         ctx.Writer.WriteLine($"{Indent(indent)}end");
     }
 
@@ -725,12 +725,12 @@ Options
 
     private static void WriteExitRepeat(AstNode.ExitRepeat node, HandlerContext ctx, int indent)
     {
-        ctx.Writer.WriteLine($"{Indent(indent)}break;");
+        ctx.Writer.WriteLine($"{Indent(indent)}break");
     }
 
     private static void WriteNextRepeat(AstNode.NextRepeat node, HandlerContext ctx, int indent)
     {
-        ctx.Writer.WriteLine($"{Indent(indent)}continue;");
+        ctx.Writer.WriteLine($"{Indent(indent)}continue");
     }
 
     private static void WriteReturn(AstNode.Return ret, HandlerContext ctx, int indent)
@@ -738,11 +738,11 @@ Options
         if (ret.Value != null)
         {
             var value = WriteExpression(ret.Value, ctx);
-            ctx.Writer.WriteLine($"{Indent(indent)}return {value};");
+            ctx.Writer.WriteLine($"{Indent(indent)}return {value}");
         }
         else
         {
-            ctx.Writer.WriteLine($"{Indent(indent)}return default;");
+            ctx.Writer.WriteLine($"{Indent(indent)}return");
         }
     }
 
