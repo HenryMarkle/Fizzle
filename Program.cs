@@ -1059,7 +1059,7 @@ Options
 
         var args = node.Parameters.Select(v => WriteExpression(v, ctx));
         var name = WriteSanitizeIdentifier(node.Name.ToLower());
-        return $"{child}.{name}({string.Join(", ", args)})";
+        return $"{child}:{name}({string.Join(", ", args)})";
     }
 
     private static string WriteList(AstNode.List node, HandlerContext ctx)
